@@ -4,7 +4,7 @@ services:
   fileshare:
     build: .
     ports:
-      - "8000:8000"
+      - "8008:8008"
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
