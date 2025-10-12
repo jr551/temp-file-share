@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  fileshare:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./uploads:/app/uploads
+    restart: unless-stopped
