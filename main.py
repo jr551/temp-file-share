@@ -261,10 +261,22 @@ async def download_file(file_id: str):
     
     metadata = file_metadata[clean_file_id]
     
+    # Force the correct file extension on the downloaded filename
+    original_filename = metadata["original_filename"]
+    stored_extension = metadata.get("file_extension", "")
+    
+    # Check if original filename already has the correct extension
+    if stored_extension and not original_filename.lower().endswith(stored_extension.lower()):
+        # Remove any existing extension and add the correct one
+        filename_without_ext = Path(original_filename).stem
+        download_filename = f"{filename_without_ext}{stored_extension}"
+    else:
+        download_filename = original_filename
+    
     return FileResponse(
         file_path,
-        filename=metadata["original_filename"],
-        media_type=metadata["content_type"]
+        filename=download_filename,
+        media_type="application/octet-stream"
     )
 
 @app.get("/")
