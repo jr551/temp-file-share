@@ -3,8 +3,6 @@ version: '3.8'
 services:
   fileshare:
     build: .
-    ports:
-      - "8008:8008"
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped

@@ -3,7 +3,7 @@ import uuid
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
-from fastapi import FastAPI, UploadFile, HTTPException, Depends, status
+from fastapi import FastAPI, UploadFile, HTTPException, Depends, status, Form
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 import uvicorn
@@ -154,27 +154,45 @@ cleanup_thread = threading.Thread(target=cleanup_old_files, daemon=True)
 cleanup_thread.start()
 
 @app.post("/upload")
-async def upload_file(file: UploadFile):
-    """Upload a file and get a shareable link"""
+async def upload_file(
+    file: UploadFile,
+    file_extension: Optional[str] = Form(None),
+    mime_type: Optional[str] = Form(None)
+):
+    """Upload a file and get a shareable link
+    
+    Args:
+        file: The file to upload
+        file_extension: Optional file extension to use for validation (e.g., '.pdf', '.jpg')
+        mime_type: Optional MIME type to use for validation (e.g., 'application/pdf', 'image/jpeg')
+    """
     if not file:
         raise HTTPException(status_code=400, detail="No file provided")
     
     if not file.filename:
         raise HTTPException(status_code=400, detail="No filename provided")
     
+    # Use provided file extension or extract from filename
+    if file_extension:
+        file_ext = file_extension.lower() if file_extension.startswith('.') else f'.{file_extension.lower()}'
+    else:
+        file_ext = Path(file.filename).suffix.lower()
+    
     # Validate file extension
-    file_ext = Path(file.filename).suffix.lower()
     if file_ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail=f"File type '{file_ext}' not allowed. Allowed types: {', '.join(sorted(ALLOWED_EXTENSIONS))}"
         )
     
+    # Use provided MIME type or fall back to file's content type
+    content_type_to_validate = mime_type if mime_type else file.content_type
+    
     # Validate MIME type
-    if file.content_type and file.content_type not in ALLOWED_MIME_TYPES:
+    if content_type_to_validate and content_type_to_validate not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=400,
-            detail=f"Content type '{file.content_type}' not allowed"
+            detail=f"Content type '{content_type_to_validate}' not allowed"
         )
     
     # Generate unique ID
@@ -209,7 +227,7 @@ async def upload_file(file: UploadFile):
     expires_at = datetime.utcnow() + timedelta(seconds=FILE_LIFETIME)
     file_metadata[file_id] = {
         "original_filename": file.filename,
-        "content_type": file.content_type,
+        "content_type": mime_type if mime_type else file.content_type,
         "uploaded_at": datetime.utcnow(),
         "expires_at": expires_at,
         "file_size": total_size
