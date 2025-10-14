@@ -230,28 +230,36 @@ async def upload_file(
         "content_type": mime_type if mime_type else file.content_type,
         "uploaded_at": datetime.utcnow(),
         "expires_at": expires_at,
-        "file_size": total_size
+        "file_size": total_size,
+        "file_extension": file_ext
     }
     
-    # Return the download URL
+    # Return the download URL with extension
     return {
         "file_id": file_id,
-        "download_url": f"/download/{file_id}",
+        "download_url": f"/download/{file_id}{file_ext}",
         "expires_at": expires_at.isoformat(),
         "original_filename": file.filename,
         "file_size": total_size
     }
 
-@app.get("/download/{file_id}")
+@app.get("/download/{file_id:path}")
 async def download_file(file_id: str):
-    """Download a file by its ID"""
-    file_path = UPLOAD_FOLDER / file_id
+    """Download a file by its ID (with optional extension in URL)"""
+    # Strip extension from file_id if present
+    clean_file_id = file_id
+    if '.' in file_id:
+        # Extract the UUID part (before any extension)
+        parts = file_id.split('.')
+        clean_file_id = parts[0]
+    
+    file_path = UPLOAD_FOLDER / clean_file_id
     
     # Check if file exists and hasn't expired
-    if not file_path.exists() or file_id not in file_metadata:
+    if not file_path.exists() or clean_file_id not in file_metadata:
         raise HTTPException(status_code=404, detail="File not found or has expired")
     
-    metadata = file_metadata[file_id]
+    metadata = file_metadata[clean_file_id]
     
     return FileResponse(
         file_path,
