@@ -6,3 +6,5 @@ services:
     volumes:
       - ./uploads:/app/uploads
     restart: unless-stopped
+    ports:
+      - 8008:8008
